@@ -23,14 +23,15 @@ function App() {
       {tempoRoutes}
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/assets" element={<AssetsPage />} />
-        <Route path="/maintenance" element={<MaintenancePage />} />
-        <Route path="/qr-codes" element={<QRCodesPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="assets" element={<AssetsPage />} />
+        <Route path="maintenance" element={<MaintenancePage />} />
+        <Route path="qr-codes" element={<QRCodesPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         {import.meta.env.VITE_TEMPO === "true" && (
-          <Route path="/tempobook/*" element={null} />
+          <Route path="tempobook/*" element={null} />
         )}
+        <Route path="*" element={<Home />} />
       </Routes>
     </Suspense>
   );

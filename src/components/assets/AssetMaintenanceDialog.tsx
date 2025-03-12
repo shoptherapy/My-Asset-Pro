@@ -69,8 +69,98 @@ const AssetMaintenanceDialog: React.FC<AssetMaintenanceDialogProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Scheduling maintenance with data:", formData);
+
+    // Add to history log
+    try {
+      const now = new Date();
+      const formattedDate = `${now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} - ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}`;
+
+      const newEvent = {
+        id: `maint-${Date.now()}`,
+        type: "maintenance" as const,
+        date: formattedDate,
+        title: `Scheduled Maintenance: ${formData.taskName}`,
+        description:
+          formData.description ||
+          `Maintenance scheduled with ${formData.priority} priority`,
+        user: {
+          name: formData.assignedTo || "System User",
+          initials: (formData.assignedTo || "SU")
+            .split(" ")
+            .map((n) => n[0])
+            .join(""),
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.assignedTo || "system"}`,
+        },
+      };
+
+      // Get existing events or initialize empty array
+      let existingEvents = [];
+      try {
+        const storedEvents = localStorage.getItem("assetMaintenanceEvents");
+        if (storedEvents) {
+          existingEvents = JSON.parse(storedEvents);
+        }
+      } catch (error) {
+        console.error("Error retrieving maintenance events:", error);
+      }
+
+      // Add new event to the beginning of the array
+      existingEvents.unshift(newEvent);
+
+      // Store back in localStorage
+      localStorage.setItem(
+        "assetMaintenanceEvents",
+        JSON.stringify(existingEvents),
+      );
+
+      // Trigger storage event manually since it doesn't fire on same page
+      window.dispatchEvent(new Event("storage"));
+    } catch (error) {
+      console.error("Error saving maintenance event:", error);
+    }
+
     onSchedule(formData);
-    window.alert("Maintenance scheduled successfully");
+
+    // Create success notification
+    const notification = document.createElement("div");
+    notification.style.position = "fixed";
+    notification.style.top = "20px";
+    notification.style.left = "50%";
+    notification.style.transform = "translateX(-50%)";
+    notification.style.backgroundColor = "#10b981"; // Green color
+    notification.style.color = "white";
+    notification.style.padding = "12px 20px";
+    notification.style.borderRadius = "8px";
+    notification.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+    notification.style.zIndex = "9999";
+    notification.style.display = "flex";
+    notification.style.alignItems = "center";
+    notification.style.gap = "8px";
+    notification.style.fontWeight = "bold";
+
+    // Add checkmark icon
+    notification.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+      <span>Maintenance task "${formData.taskName}" scheduled successfully</span>
+    `;
+
+    document.body.appendChild(notification);
+
+    // Remove notification after 3 seconds
+    setTimeout(() => {
+      notification.style.opacity = "0";
+      notification.style.transition = "opacity 0.5s ease";
+
+      setTimeout(() => {
+        if (document.body.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 500);
+    }, 3000);
+
     onClose();
   };
 

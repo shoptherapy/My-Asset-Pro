@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,73 +60,6 @@ const getEventBadgeVariant = (type: HistoryEvent["type"]) => {
   }
 };
 
-const AssetHistory = ({
-  events = defaultEvents,
-  className = "",
-}: AssetHistoryProps) => {
-  return (
-    <Card className={`w-full bg-white ${className}`}>
-      <CardHeader>
-        <CardTitle className="text-lg font-medium">Asset History</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-6">
-          {events.map((event, index) => (
-            <div key={event.id} className="relative">
-              <div className="flex items-start gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                  {getEventIcon(event.type)}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium">{event.title}</p>
-                    <Badge
-                      variant={getEventBadgeVariant(event.type)}
-                      className="text-xs"
-                    >
-                      {event.type.replace("-", " ")}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {event.description}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Calendar className="h-3 w-3" />
-                    <span>{event.date}</span>
-                    {event.user && (
-                      <>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          <Avatar className="h-4 w-4">
-                            {event.user.avatar ? (
-                              <AvatarImage
-                                src={event.user.avatar}
-                                alt={event.user.name}
-                              />
-                            ) : (
-                              <AvatarFallback className="text-[8px]">
-                                {event.user.initials}
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <span>{event.user.name}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {index < events.length - 1 && (
-                <div className="absolute left-4 top-8 bottom-0 w-[1px] bg-border ml-[0.6rem] h-[calc(100%-0.5rem)]"></div>
-              )}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
 // Default events for when no props are provided
 const defaultEvents: HistoryEvent[] = [
   {
@@ -179,5 +112,111 @@ const defaultEvents: HistoryEvent[] = [
     },
   },
 ];
+
+// Check for maintenance data in localStorage
+const getMaintenanceEvents = (): HistoryEvent[] => {
+  try {
+    const storedEvents = localStorage.getItem("assetMaintenanceEvents");
+    if (storedEvents) {
+      return JSON.parse(storedEvents);
+    }
+  } catch (error) {
+    console.error("Error retrieving maintenance events:", error);
+  }
+  return [];
+};
+
+const AssetHistory = ({ events = [], className = "" }: AssetHistoryProps) => {
+  const [allEvents, setAllEvents] = useState<HistoryEvent[]>([]);
+
+  // Force refresh of maintenance events on each render and when storage changes
+  useEffect(() => {
+    const maintenanceEvents = getMaintenanceEvents();
+    setAllEvents([...maintenanceEvents, ...defaultEvents]);
+
+    // Add event listener for storage changes
+    const handleStorageChange = () => {
+      const updatedEvents = getMaintenanceEvents();
+      setAllEvents([...updatedEvents, ...defaultEvents]);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    // Also set up a polling mechanism to check for changes
+    const intervalId = setInterval(() => {
+      const updatedEvents = getMaintenanceEvents();
+      setAllEvents([...updatedEvents, ...defaultEvents]);
+    }, 2000); // Check every 2 seconds
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const displayEvents = events.length > 0 ? events : allEvents;
+
+  return (
+    <Card className={`w-full bg-white ${className}`}>
+      <CardHeader>
+        <CardTitle className="text-lg font-medium">Asset History</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {displayEvents.map((event, index) => (
+            <div key={event.id} className="relative">
+              <div className="flex items-start gap-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                  {getEventIcon(event.type)}
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{event.title}</p>
+                    <Badge
+                      variant={getEventBadgeVariant(event.type)}
+                      className="text-xs"
+                    >
+                      {event.type.replace("-", " ")}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {event.description}
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Calendar className="h-3 w-3" />
+                    <span>{event.date}</span>
+                    {event.user && (
+                      <>
+                        <span>•</span>
+                        <div className="flex items-center gap-1">
+                          <Avatar className="h-4 w-4">
+                            {event.user.avatar ? (
+                              <AvatarImage
+                                src={event.user.avatar}
+                                alt={event.user.name}
+                              />
+                            ) : (
+                              <AvatarFallback className="text-[8px]">
+                                {event.user.initials}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <span>{event.user.name}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {index < displayEvents.length - 1 && (
+                <div className="absolute left-4 top-8 bottom-0 w-[1px] bg-border ml-[0.6rem] h-[calc(100%-0.5rem)]"></div>
+              )}
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
 
 export default AssetHistory;
